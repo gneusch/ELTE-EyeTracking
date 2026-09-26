@@ -10,6 +10,8 @@ const btnReset     = document.getElementById('btn-reset');
 const eventLog     = document.getElementById('event-log');
 const statsBody    = document.getElementById('stats-body');
 const canvas       = document.getElementById('detection-canvas');
+const btnExportAll = document.getElementById('btn-export-all');
+const fullEventHistory = [];
 
 // ── State ─────────────────────────────────────────────────────────────────
 const tracker = new EyeTracker();
@@ -75,9 +77,18 @@ function drawDetectionRange() {
 
 // ── Event log helpers ─────────────────────────────────────────────────────
 function logEvent(type, text) {
+  const now = new Date();
+  
+  fullEventHistory.push({
+    localTime: now.toLocaleTimeString(),
+    isoTime: now.toISOString(),
+    type: type,
+    message: text
+  });
+
   const li = document.createElement('li');
   li.className = type;
-  li.textContent = `${new Date().toLocaleTimeString()} — ${text}`;
+  li.textContent = `${now.toLocaleTimeString()} — ${text}`;
   if (eventLog.firstChild?.style?.color === 'rgb(170, 170, 170)') {
     eventLog.innerHTML = '';
   }
@@ -143,6 +154,8 @@ btnObserve.addEventListener('click', async () => {
   btnObserve.textContent = 'Starting…';
   try {
     await tracker.observe(TARGET_SELECTOR, 20);
+    btnNextSet.style.display = 'inline-block';
+    btnNextSet.disabled = false;
     statsInterval = setInterval(refreshStats, 1000);
     btnStop.disabled    = false;
     btnPointer.disabled = false;
@@ -159,6 +172,7 @@ btnObserve.addEventListener('click', async () => {
 
 btnStop.addEventListener('click', async () => {
   await tracker.stop();
+  btnNextSet.disabled = true;
   clearInterval(statsInterval);
   refreshStats();
   document.querySelectorAll('.card, .overlap-wrapper').forEach(el => el.classList.remove('is-gazed'));
@@ -188,6 +202,122 @@ btnReset.addEventListener('click', () => {
   logEvent('changed', 'Stats reset');
 });
 
+btnExportAll.addEventListener('click', () => {
+  const stats = tracker.loadStats();
+
+  if (fullEventHistory.length === 0 && stats.length === 0) {
+    alert('No data available for export!');
+    return;
+  }
+
+  const csvLines = [];
+
+  // ── 1. SECTION: AGGREGATED DWELL-TIME STATISTICS ──
+  csvLines.push(['=== AGGREGATED DWELL-TIME STATISTICS ===']);
+  csvLines.push(['Element / Image', 'Dwell Time (s)', 'Dwell Time (ms)']);
+
+  if (stats.length === 0) {
+    csvLines.push(['No data', '0.00', '0']);
+  } else {
+    stats
+      .sort((a, b) => b.dwellMs - a.dwellMs)
+      .forEach(item => {
+        const el = document.querySelector(`[data-eye-id="${item.elementId}"]`);
+        const label = el?.dataset.label ?? item.elementId;
+        const secs = (item.dwellMs / 1000).toFixed(2);
+        csvLines.push([`"${label.replace(/"/g, '""')}"`, secs, item.dwellMs]);
+      });
+  }
+
+  csvLines.push([]);
+  csvLines.push([]);
+
+  // ── 2. SECTION: CHRONOLOGICAL EVENT LOG ──  
+  csvLines.push(['=== DETAILED CHRONOLOGICAL EVENT LOG ===']);
+  csvLines.push(['Local Time', 'ISO Timestamp', 'Event Type', 'Details']);
+
+  fullEventHistory.forEach(event => {
+    csvLines.push([
+      `"${event.localTime}"`,
+      `"${event.isoTime}"`,
+      `"${event.type}"`,
+      `"${event.message.replace(/"/g, '""')}"`
+    ]);
+  });
+
+  // Prepend UTF-8 BOM (\uFEFF) for proper special character handling in Excel  
+  const csvContent = '\uFEFF' + csvLines.map(row => row.join(';')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const downloadLink = document.createElement('a');
+  const fileTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  downloadLink.href = url;
+  downloadLink.download = `eyetracking_results_${fileTimestamp}.csv`;
+
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+  URL.revokeObjectURL(url);
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────
 drawDetectionRange();
 window.addEventListener('resize', drawDetectionRange);
+
+// ── Load next set of pictures ──────────────────────────────────────────────
+let currentRound = 1;
+const btnNextSet = document.getElementById('btn-next-set');
+const roundIndicator = document.getElementById('round-indicator');
+
+const cardSlots = [
+  { card: document.getElementById('card-a'), img: document.getElementById('img-a'), suffix: 'a' },
+  { card: document.getElementById('card-b'), img: document.getElementById('img-b'), suffix: 'b' },
+  { card: document.getElementById('card-c'), img: document.getElementById('img-c'), suffix: 'c' },
+  { card: document.getElementById('card-d'), img: document.getElementById('img-d'), suffix: 'd' }
+];
+
+async function checkSetExists(roundNum) {
+  try {
+    const res = await fetch(`images/${roundNum}a.jpg`, { method: 'HEAD' });
+    return res.ok;
+  } catch (err) {
+    return false;
+  }
+}
+
+function applyRound(roundNum) {
+  cardSlots.forEach(slot => {
+    const label = `${roundNum}${slot.suffix}`;
+    slot.img.src = `images/${label}.jpg`;
+    slot.card.dataset.label = `Picture ${label.toUpperCase()}`;
+    
+    slot.card.dataset.eyeId = `eye-img-${label}`;
+  });
+
+  roundIndicator.textContent = `Picture Set: ${roundNum}. round`;
+  logEvent('changed', `--- ${roundNum}. PICTURE SET LOADED ---`);
+}
+
+applyRound(1);
+
+btnNextSet.addEventListener('click', async () => {
+  btnNextSet.disabled = true;
+  const nextRound = currentRound + 1;
+  const exists = await checkSetExists(nextRound);
+
+  if (exists) {
+    currentRound = nextRound;
+    applyRound(currentRound);
+    btnNextSet.disabled = false;
+  } else {
+    roundIndicator.textContent = 'Experiment completed!';
+    btnNextSet.style.display = 'none';
+    logEvent('changed', '=== THE EXPERIMENT IS COMPLETE (NO MORE IMAGES) ===');
+    
+    if (btnStop && !btnStop.disabled) {
+      btnStop.click();
+    }
+    alert('The experiment is complete! Please click the "Export Results (CSV)" button.');
+  }
+});

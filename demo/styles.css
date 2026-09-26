@@ -67,7 +67,10 @@ main {
 .cards-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
   gap: 16px;
+  height: calc(100vh - 180px);
+  max-width: 900px;
 }
 
 .card {
@@ -83,6 +86,23 @@ main {
 .card.is-gazed {
   border-color: #4a90e2;
   box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.15);
+}
+.card.image-card {
+  padding: 8px;
+  margin: 0;
+  min-height: unset; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.tracked-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; 
+  pointer-events: none;
 }
 
 /* Z-index overlap demo */
@@ -154,6 +174,22 @@ main {
 #event-log li.lookat    { border-left: 3px solid #27ae60; }
 #event-log li.lookaway  { border-left: 3px solid #e74c3c; }
 #event-log li.changed   { border-left: 3px solid #4a90e2; }
+
+.event-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.event-log-header .section-title {
+  margin-bottom: 0;
+}
+
+#btn-export-all {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+}
 
 /* Stats table */
 .stats-panel {
