@@ -25,34 +25,35 @@
   <!-- ── Tracked cards ── -->
   <section class="targets-area">
     <p class="section-title">Tracked Elements — look at any card</p>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <p class="section-title" id="round-indicator" style="margin: 0; font-size: 0.9rem; color: #1a1a2e; font-weight: bold;">
+        Experiment Round: <span id="round-number">1</span>
+      </p>
+
+      <button id="btn-next-set" class="btn-success" style="display: none; padding: 6px 14px;">
+        Next Set of Cards
+      </button>
+
+    </div>
+
+
     <div class="cards-grid">
 
-      <div class="card" id="card-1" data-label="Card 1 — Images &amp; Videos">
-        <h3>Images &amp; Videos</h3>
-        <p>Tracking gaze on visual media helps identify user interest in marketing and advertisement research (US1).</p>
+      <div class="card image-card" id="card-a" data-label="1a">
+        <img id="img-a" src="images/1a.jpg" class="tracked-image" />
       </div>
 
-      <div class="card" id="card-2" data-label="Card 2 — Page Layout">
-        <h3>Page Layout &amp; Design</h3>
-        <p>Dwell-time statistics reveal which layout areas receive the most attention, improving UX decisions (US3).</p>
+      <div class="card image-card" id="card-b" data-label="1b">
+        <img id="img-b" src="images/1b.jpg" class="tracked-image" />
       </div>
 
-      <div class="card" id="card-3" data-label="Card 3 — Accessibility">
-        <h3>Accessibility Analysis</h3>
-        <p>Identify focus-loss areas where users struggle or skip content — actionable data for accessibility (US6).</p>
+      <div class="card image-card" id="card-c" data-label="1c">
+        <img id="img-c" src="images/1c.jpg" class="tracked-image" />
       </div>
 
-      <div class="card" id="card-4" data-label="Card 4 — Reader Focus">
-        <h3>Reader Focus</h3>
-        <p>Detect where readers get stuck or lose focus in long-form content, enabling targeted improvements (US8).</p>
-      </div>
-
-      <!-- Z-index overlap test -->
-      <div class="overlap-wrapper" id="card-overlap" data-label="Overlap — Z-axis test">
-        <div class="overlap-back">Back element (z-index: 1)</div>
-        <div class="overlap-front" id="card-front" data-label="Front element (z-index: 2)">
-          Front wins (z-index: 2)
-        </div>
+      <div class="card image-card" id="card-d" data-label="1d">
+        <img id="img-d" src="images/1d.jpg" class="tracked-image" />
       </div>
 
     </div>
@@ -62,7 +63,12 @@
   <aside class="right-col">
 
     <div class="event-log-panel">
-      <p class="section-title">Event Log</p>
+      <div class="event-log-header">
+        <p class="section-title">Event Log</p>
+        <button id="btn-export-all" class="btn-primary">
+          Export results (CSV)
+        </button>
+      </div>
       <ul id="event-log">
         <li style="color:#aaa">Events will appear here during observation…</li>
       </ul>
