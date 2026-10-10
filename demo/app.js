@@ -7,9 +7,15 @@ const btnStop      = document.getElementById('btn-stop');
 const btnPointer   = document.getElementById('btn-pointer');
 const btnStats     = document.getElementById('btn-stats');
 const btnReset     = document.getElementById('btn-reset');
+const btnEventLog  = document.getElementById('btn-event-log');
+const eventLogMenu = document.getElementById('event-log-menu');
+const eventLogPanel = document.getElementById('event-log-panel');
 const eventLog     = document.getElementById('event-log');
 const statsBody    = document.getElementById('stats-body');
 const canvas       = document.getElementById('detection-canvas');
+const cardsGrid    = document.querySelector('.cards-grid');
+const btnDetectionToggle = document.getElementById('btn-detection-toggle');
+const detectionContent = document.getElementById('detection-content');
 const btnExportAll = document.getElementById('btn-export-all');
 const fullEventHistory = [];
 
@@ -75,6 +81,18 @@ function drawDetectionRange() {
   ctx.fillText('Confident gaze detection zone', cx, H - 12);
 }
 
+function fitCardsToCalibrationZone() {
+  const gridTop = cardsGrid.getBoundingClientRect().top;
+  cardsGrid.style.height = `${Math.max(0, window.innerHeight * 0.9 - gridTop)}px`;
+}
+
+btnDetectionToggle.addEventListener('click', () => {
+  const isExpanded = btnDetectionToggle.getAttribute('aria-expanded') !== 'true';
+  btnDetectionToggle.setAttribute('aria-expanded', String(isExpanded));
+  detectionContent.hidden = !isExpanded;
+  if (isExpanded) drawDetectionRange();
+});
+
 // ── Event log helpers ─────────────────────────────────────────────────────
 function logEvent(type, text) {
   const now = new Date();
@@ -134,6 +152,31 @@ tracker.on('currentElementChanged', ({ element }) => {
 });
 
 // ── Button wiring ─────────────────────────────────────────────────────────
+function closeEventLog() {
+  eventLogMenu.classList.remove('is-open');
+  btnEventLog.setAttribute('aria-expanded', 'false');
+  eventLogPanel.setAttribute('aria-hidden', 'true');
+}
+
+btnEventLog.addEventListener('click', () => {
+  const isOpen = eventLogMenu.classList.toggle('is-open');
+  btnEventLog.setAttribute('aria-expanded', String(isOpen));
+  eventLogPanel.setAttribute('aria-hidden', String(!isOpen));
+});
+
+eventLogMenu.addEventListener('mouseleave', closeEventLog);
+eventLogMenu.addEventListener('focusout', event => {
+  if (!eventLogMenu.contains(event.relatedTarget)) {
+    closeEventLog();
+  }
+});
+eventLogMenu.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    closeEventLog();
+    btnEventLog.focus();
+  }
+});
+
 btnCalibrate.addEventListener('click', async () => {
   btnCalibrate.disabled = true;
   btnCalibrate.textContent = 'Calibrating…';
@@ -263,7 +306,9 @@ btnExportAll.addEventListener('click', () => {
 
 // ── Init ──────────────────────────────────────────────────────────────────
 drawDetectionRange();
+fitCardsToCalibrationZone();
 window.addEventListener('resize', drawDetectionRange);
+window.addEventListener('resize', fitCardsToCalibrationZone);
 
 // ── Load next set of pictures ──────────────────────────────────────────────
 let currentRound = 1;
