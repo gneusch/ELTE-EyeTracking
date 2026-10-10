@@ -17,6 +17,33 @@
     <button id="btn-pointer"    class="btn-secondary" disabled>Hide Pointer</button>
     <button id="btn-stats"      class="btn-secondary" disabled>Disable Stats</button>
     <button id="btn-reset"      class="btn-warning"  disabled>Reset Stats</button>
+    <div class="event-log-menu" id="event-log-menu">
+      <button id="btn-event-log" class="btn-secondary" aria-expanded="false" aria-controls="event-log-panel">
+        Event Log
+      </button>
+      <div class="event-log-panel" id="event-log-panel" aria-hidden="true">
+        <div class="event-log-header">
+          <p class="section-title">Event Log</p>
+          <button id="btn-export-all" class="btn-primary">
+            Export results (CSV)
+          </button>
+        </div>
+        <ul id="event-log">
+          <li style="color:#aaa">Events will appear here during observation…</li>
+        </ul>
+        <div class="stats-panel">
+          <p class="section-title">Dwell-Time Statistics</p>
+          <table id="stats-table">
+            <thead>
+              <tr><th>Element</th><th>Dwell (s)</th></tr>
+            </thead>
+            <tbody id="stats-body">
+              <tr><td colspan="2" style="color:#aaa">No data yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -26,7 +53,7 @@
   <section class="targets-area">
     <p class="section-title">Tracked Elements — look at any card</p>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
       <p class="section-title" id="round-indicator" style="margin: 0; font-size: 0.9rem; color: #1a1a2e; font-weight: bold;">
         Experiment Round: <span id="round-number">1</span>
       </p>
@@ -59,43 +86,18 @@
     </div>
   </section>
 
-  <!-- ── Right column ── -->
-  <aside class="right-col">
-
-    <div class="event-log-panel">
-      <div class="event-log-header">
-        <p class="section-title">Event Log</p>
-        <button id="btn-export-all" class="btn-primary">
-          Export results (CSV)
-        </button>
-      </div>
-      <ul id="event-log">
-        <li style="color:#aaa">Events will appear here during observation…</li>
-      </ul>
-    </div>
-
-    <div class="stats-panel">
-      <p class="section-title">Dwell-Time Statistics</p>
-      <table id="stats-table">
-        <thead>
-          <tr><th>Element</th><th>Dwell (s)</th></tr>
-        </thead>
-        <tbody id="stats-body">
-          <tr><td colspan="2" style="color:#aaa">No data yet</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-  </aside>
-
   <!-- ── Detection range ── -->
   <section class="detection-panel">
-    <p class="section-title">Detection Range Visualization</p>
-    <canvas id="detection-canvas"></canvas>
-    <p class="detection-caption">
-      The ellipse shows the <strong>confident gaze detection zone</strong> — the region covered by the 3×3 calibration grid.
-      Gaze outside this area may be less accurate.
-    </p>
+    <button id="btn-detection-toggle" class="detection-toggle" aria-expanded="false" aria-controls="detection-content">
+      <span class="section-title">Detection Range Visualization</span>
+    </button>
+    <div id="detection-content" class="detection-content" hidden>
+      <canvas id="detection-canvas"></canvas>
+      <p class="detection-caption">
+        The ellipse shows the <strong>confident gaze detection zone</strong> — the region covered by the 3×3 calibration grid.
+        Gaze outside this area may be less accurate.
+      </p>
+    </div>
   </section>
 
 </main>
