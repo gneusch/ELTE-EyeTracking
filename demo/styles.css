@@ -203,6 +203,16 @@ main {
 /* Event log dropdown */
 .event-log-menu { position: relative; }
 
+.event-log-menu.is-open::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10;
+  width: min(520px, calc(100vw - 32px));
+  height: 8px;
+}
+
 .event-log-panel {
   position: absolute;
   top: calc(100% + 8px);
