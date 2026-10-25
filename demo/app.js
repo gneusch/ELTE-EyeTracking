@@ -14,19 +14,40 @@ const eventLog     = document.getElementById('event-log');
 const statsBody    = document.getElementById('stats-body');
 const canvas       = document.getElementById('detection-canvas');
 const cardsGrid    = document.querySelector('.cards-grid');
+const targetsArea  = document.querySelector('.targets-area');
+const modeSelect   = document.getElementById('observation-mode');
+const btnNextSet   = document.getElementById('btn-next-set');
+const roundIndicator = document.getElementById('round-indicator');
 const btnDetectionToggle = document.getElementById('btn-detection-toggle');
 const detectionContent = document.getElementById('detection-content');
 const btnExportAll = document.getElementById('btn-export-all');
 const fullEventHistory = [];
+
+const cardSlots = [
+  { card: document.getElementById('card-a'), img: document.getElementById('img-a'), suffix: 'a' },
+  { card: document.getElementById('card-b'), img: document.getElementById('img-b'), suffix: 'b' },
+  { card: document.getElementById('card-c'), img: document.getElementById('img-c'), suffix: 'c' },
+  { card: document.getElementById('card-d'), img: document.getElementById('img-d'), suffix: 'd' }
+];
+const observationModes = {
+  two: { directory: 'images_v2', suffixes: ['a', 'b'], displayName: 'Two-picture' },
+  four: { directory: 'images', suffixes: ['a', 'b', 'c', 'd'], displayName: 'Four-picture' }
+};
 
 // ── State ─────────────────────────────────────────────────────────────────
 const tracker = new EyeTracker();
 let pointerVisible = true;
 let statsEnabled   = true;
 let statsInterval  = null;
+let currentMode = modeSelect.value;
+let currentRound = 1;
+let stimulusReady = false;
+let calibrationComplete = false;
 
-// Targets: all cards by CSS selector
-const TARGET_SELECTOR = '.card, .overlap-wrapper, .overlap-front';
+function getActiveCardSlots(mode = currentMode) {
+  const activeSuffixes = observationModes[mode].suffixes;
+  return cardSlots.filter(slot => activeSuffixes.includes(slot.suffix));
+}
 
 // ── Detection range canvas ────────────────────────────────────────────────
 function drawDetectionRange() {
@@ -83,7 +104,10 @@ function drawDetectionRange() {
 
 function fitCardsToCalibrationZone() {
   const gridTop = cardsGrid.getBoundingClientRect().top;
-  cardsGrid.style.height = `${Math.max(0, window.innerHeight * 0.9 - gridTop)}px`;
+  const gridHeight = currentMode === 'two'
+    ? window.innerHeight - 2 * gridTop
+    : window.innerHeight * 0.9 - gridTop;
+  cardsGrid.style.height = `${Math.max(0, gridHeight)}px`;
 }
 
 btnDetectionToggle.addEventListener('click', () => {
@@ -118,6 +142,21 @@ function logEvent(type, text) {
 }
 
 // ── Stats table ───────────────────────────────────────────────────────────
+function getStatsLabel(elementId) {
+  const activeCard = cardSlots.find(slot => slot.card.dataset.eyeId === elementId);
+  if (activeCard) return activeCard.card.dataset.label;
+
+  const modeMatch = /^eye-img-(two|four)-(\d+[a-d])$/.exec(elementId);
+  if (modeMatch) {
+    const modeName = observationModes[modeMatch[1]].displayName;
+    return `${modeName} — Picture ${modeMatch[2].toUpperCase()}`;
+  }
+
+  const legacyMatch = /^eye-img-(\d+[a-d])$/.exec(elementId);
+  if (legacyMatch) return `Four-picture — Picture ${legacyMatch[1].toUpperCase()}`;
+  return elementId;
+}
+
 function refreshStats() {
   const items = tracker.loadStats();
   if (items.length === 0) {
@@ -127,8 +166,7 @@ function refreshStats() {
   statsBody.innerHTML = items
     .sort((a, b) => b.dwellMs - a.dwellMs)
     .map(item => {
-      const el = document.querySelector(`[data-eye-id="${item.elementId}"]`);
-      const label = el?.dataset.label ?? item.elementId;
+      const label = getStatsLabel(item.elementId);
       const secs = (item.dwellMs / 1000).toFixed(1);
       return `<tr><td>${label}</td><td>${secs}s</td></tr>`;
     })
@@ -182,8 +220,9 @@ btnCalibrate.addEventListener('click', async () => {
   btnCalibrate.textContent = 'Calibrating…';
   try {
     await tracker.calibrate();
+    calibrationComplete = true;
     logEvent('changed', 'Calibration complete ✓');
-    btnObserve.disabled = false;
+    btnObserve.disabled = !stimulusReady;
   } catch (err) {
     logEvent('lookaway', `Calibration failed: ${err.message}`);
   } finally {
@@ -194,9 +233,10 @@ btnCalibrate.addEventListener('click', async () => {
 
 btnObserve.addEventListener('click', async () => {
   btnObserve.disabled = true;
+  modeSelect.disabled = true;
   btnObserve.textContent = 'Starting…';
   try {
-    await tracker.observe(TARGET_SELECTOR, 20);
+    await tracker.observe(getActiveCardSlots().map(slot => slot.card), 20);
     btnNextSet.style.display = 'inline-block';
     btnNextSet.disabled = false;
     statsInterval = setInterval(refreshStats, 1000);
@@ -208,6 +248,7 @@ btnObserve.addEventListener('click', async () => {
   } catch (err) {
     logEvent('lookaway', `Observation failed: ${err.message}`);
     btnObserve.disabled = false;
+    modeSelect.disabled = false;
   } finally {
     btnObserve.textContent = 'Start Observation';
   }
@@ -216,10 +257,12 @@ btnObserve.addEventListener('click', async () => {
 btnStop.addEventListener('click', async () => {
   await tracker.stop();
   btnNextSet.disabled = true;
+  btnNextSet.style.display = 'none';
   clearInterval(statsInterval);
   refreshStats();
-  document.querySelectorAll('.card, .overlap-wrapper').forEach(el => el.classList.remove('is-gazed'));
-  btnObserve.disabled = false;
+  cardSlots.forEach(slot => slot.card.classList.remove('is-gazed'));
+  modeSelect.disabled = false;
+  btnObserve.disabled = !calibrationComplete || !stimulusReady;
   btnStop.disabled    = true;
   btnPointer.disabled = true;
   btnStats.disabled   = true;
@@ -265,8 +308,7 @@ btnExportAll.addEventListener('click', () => {
     stats
       .sort((a, b) => b.dwellMs - a.dwellMs)
       .forEach(item => {
-        const el = document.querySelector(`[data-eye-id="${item.elementId}"]`);
-        const label = el?.dataset.label ?? item.elementId;
+        const label = getStatsLabel(item.elementId);
         const secs = (item.dwellMs / 1000).toFixed(2);
         csvLines.push([`"${label.replace(/"/g, '""')}"`, secs, item.dwellMs]);
       });
@@ -308,61 +350,147 @@ btnExportAll.addEventListener('click', () => {
 drawDetectionRange();
 fitCardsToCalibrationZone();
 window.addEventListener('resize', drawDetectionRange);
-window.addEventListener('resize', fitCardsToCalibrationZone);
+window.addEventListener('resize', () => {
+  requestAnimationFrame(() => requestAnimationFrame(fitCardsToCalibrationZone));
+});
 
-// ── Load next set of pictures ──────────────────────────────────────────────
-let currentRound = 1;
-const btnNextSet = document.getElementById('btn-next-set');
-const roundIndicator = document.getElementById('round-indicator');
+// ── Load picture sets ─────────────────────────────────────────────────────
+async function checkRoundAvailability(roundNum, mode) {
+  const config = observationModes[mode];
+  const results = await Promise.all(config.suffixes.map(async suffix => {
+    const url = `${config.directory}/${roundNum}${suffix}.jpg`;
+    let response;
+    try {
+      response = await fetch(url, { method: 'HEAD' });
+    } catch (err) {
+      throw new Error(`Could not check ${url}: ${err.message}`);
+    }
 
-const cardSlots = [
-  { card: document.getElementById('card-a'), img: document.getElementById('img-a'), suffix: 'a' },
-  { card: document.getElementById('card-b'), img: document.getElementById('img-b'), suffix: 'b' },
-  { card: document.getElementById('card-c'), img: document.getElementById('img-c'), suffix: 'c' },
-  { card: document.getElementById('card-d'), img: document.getElementById('img-d'), suffix: 'd' }
-];
+    if (response.status === 404 || response.status === 410) {
+      return { url, available: false };
+    }
+    if (!response.ok) {
+      throw new Error(`Could not check ${url} (HTTP ${response.status}).`);
+    }
+    return { url, available: true };
+  }));
 
-async function checkSetExists(roundNum) {
-  try {
-    const res = await fetch(`images/${roundNum}a.jpg`, { method: 'HEAD' });
-    return res.ok;
-  } catch (err) {
-    return false;
+  const missing = results.filter(result => !result.available);
+  if (missing.length === results.length) return null;
+  if (missing.length > 0) {
+    throw new Error(`Incomplete picture set ${roundNum}; missing ${missing.map(item => item.url).join(', ')}.`);
   }
+  return results.map(result => result.url);
 }
 
-function applyRound(roundNum) {
-  cardSlots.forEach(slot => {
-    const label = `${roundNum}${slot.suffix}`;
-    slot.img.src = `images/${label}.jpg`;
-    slot.card.dataset.label = `Picture ${label.toUpperCase()}`;
-    
-    slot.card.dataset.eyeId = `eye-img-${label}`;
+function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = () => reject(new Error(`Could not load image ${url}.`));
+    image.src = url;
+  });
+}
+
+async function loadRound(roundNum, mode) {
+  const urls = await checkRoundAvailability(roundNum, mode);
+  if (!urls) return false;
+
+  await Promise.all(urls.map(preloadImage));
+
+  const config = observationModes[mode];
+  const activeSuffixes = new Set(config.suffixes);
+  const activeSlots = getActiveCardSlots(mode);
+  activeSlots.forEach((slot, index) => {
+    const pictureId = `${roundNum}${slot.suffix}`;
+    const label = `${config.displayName} — Picture ${pictureId.toUpperCase()}`;
+    slot.img.src = urls[index];
+    slot.img.alt = `Picture ${pictureId.toUpperCase()}`;
+    slot.card.dataset.label = label;
+    slot.card.dataset.eyeId = `eye-img-${mode}-${pictureId}`;
   });
 
-  roundIndicator.textContent = `Picture Set: ${roundNum}. round`;
-  logEvent('changed', `--- ${roundNum}. PICTURE SET LOADED ---`);
+  cardSlots.forEach(slot => {
+    slot.card.hidden = !activeSuffixes.has(slot.suffix);
+    slot.card.classList.remove('is-gazed');
+  });
+  cardsGrid.classList.toggle('two-picture-mode', mode === 'two');
+  targetsArea.classList.toggle('two-picture-mode', mode === 'two');
+  modeSelect.value = mode;
+  currentMode = mode;
+  currentRound = roundNum;
+  roundIndicator.textContent = `${config.displayName} mode — Picture Set: ${roundNum}`;
+  fitCardsToCalibrationZone();
+  logEvent('changed', `--- ${config.displayName.toUpperCase()} PICTURE SET ${roundNum} LOADED ---`);
+  return true;
 }
 
-applyRound(1);
+function reportRoundLoadError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  logEvent('lookaway', `Picture set loading failed: ${message}`);
+  alert(`Picture set could not be loaded. ${message}`);
+}
+
+modeSelect.addEventListener('change', async () => {
+  const selectedMode = modeSelect.value;
+  modeSelect.disabled = true;
+  btnObserve.disabled = true;
+  btnNextSet.disabled = true;
+  try {
+    const loaded = await loadRound(1, selectedMode);
+    if (!loaded) {
+      throw new Error(`The first picture set is missing from ${observationModes[selectedMode].directory}/.`);
+    }
+    stimulusReady = true;
+    btnObserve.disabled = !calibrationComplete;
+    btnNextSet.style.display = 'none';
+    btnNextSet.disabled = true;
+  } catch (err) {
+    modeSelect.value = currentMode;
+    reportRoundLoadError(err);
+  } finally {
+    modeSelect.disabled = !btnStop.disabled;
+    btnObserve.disabled = !calibrationComplete || !stimulusReady;
+    btnNextSet.disabled = true;
+  }
+});
 
 btnNextSet.addEventListener('click', async () => {
   btnNextSet.disabled = true;
   const nextRound = currentRound + 1;
-  const exists = await checkSetExists(nextRound);
+  try {
+    const loaded = await loadRound(nextRound, currentMode);
+    if (loaded) return;
 
-  if (exists) {
-    currentRound = nextRound;
-    applyRound(currentRound);
-    btnNextSet.disabled = false;
-  } else {
-    roundIndicator.textContent = 'Experiment completed!';
+    const config = observationModes[currentMode];
+    roundIndicator.textContent = `${config.displayName} mode — Experiment completed!`;
     btnNextSet.style.display = 'none';
-    logEvent('changed', '=== THE EXPERIMENT IS COMPLETE (NO MORE IMAGES) ===');
-    
-    if (btnStop && !btnStop.disabled) {
-      btnStop.click();
-    }
+    logEvent('changed', `=== ${config.displayName.toUpperCase()} EXPERIMENT COMPLETE (NO MORE IMAGES) ===`);
+    if (!btnStop.disabled) btnStop.click();
     alert('The experiment is complete! Please click the "Export Results (CSV)" button.');
+  } catch (err) {
+    reportRoundLoadError(err);
+  } finally {
+    if (btnNextSet.style.display !== 'none' && !btnStop.disabled) {
+      btnNextSet.disabled = false;
+    }
   }
 });
+
+async function initializeStimuli() {
+  modeSelect.disabled = true;
+  try {
+    const loaded = await loadRound(1, currentMode);
+    if (!loaded) {
+      throw new Error(`The first picture set is missing from ${observationModes[currentMode].directory}/.`);
+    }
+    stimulusReady = true;
+    btnObserve.disabled = !calibrationComplete;
+  } catch (err) {
+    reportRoundLoadError(err);
+  } finally {
+    modeSelect.disabled = false;
+  }
+}
+
+initializeStimuli();

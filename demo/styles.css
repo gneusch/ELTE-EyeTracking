@@ -24,6 +24,27 @@ header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.03em; }
 
 .controls { display: flex; gap: 8px; flex-wrap: wrap; }
 
+.mode-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.mode-control select {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #fff;
+  color: #1a1a2e;
+  font: inherit;
+}
+.mode-control select:focus-visible {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
+
 button {
   padding: 8px 16px;
   border: none;
@@ -75,6 +96,12 @@ main {
   margin-bottom: 4px;
 }
 
+.targets-area.two-picture-mode {
+  width: min(76vw, calc(80vw - 40px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .cards-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -82,6 +109,22 @@ main {
   gap: 16px;
   height: calc(90vh - 108px);
   max-width: none;
+}
+
+.cards-grid.two-picture-mode {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: clamp(8px, 2vw, 24px);
+  align-items: center;
+}
+
+.cards-grid.two-picture-mode .image-card {
+  height: auto;
+  aspect-ratio: 2 / 1;
+}
+
+.card[hidden] {
+  display: none !important;
 }
 
 .card {
@@ -159,6 +202,16 @@ main {
 
 /* Event log dropdown */
 .event-log-menu { position: relative; }
+
+.event-log-menu.is-open::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10;
+  width: min(520px, calc(100vw - 32px));
+  height: 8px;
+}
 
 .event-log-panel {
   position: absolute;
