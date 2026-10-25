@@ -11,6 +11,13 @@
 <header>
   <h1>Eye Tracking Library</h1>
   <div class="controls">
+    <label class="mode-control" for="observation-mode">
+      Observation mode
+      <select id="observation-mode">
+        <option value="two" selected>Two pictures (default)</option>
+        <option value="four">Four pictures</option>
+      </select>
+    </label>
     <button id="btn-calibrate"  class="btn-primary">Calibrate</button>
     <button id="btn-observe"    class="btn-success" disabled>Start Observation</button>
     <button id="btn-stop"       class="btn-danger"  disabled>Stop</button>
@@ -50,8 +57,8 @@
 <main>
 
   <!-- ── Tracked cards ── -->
-  <section class="targets-area">
-    <p class="section-title">Tracked Elements — look at any card</p>
+  <section class="targets-area two-picture-mode">
+    <p class="section-title">Tracked Pictures — look at the pictures</p>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
       <p class="section-title" id="round-indicator" style="margin: 0; font-size: 0.9rem; color: #1a1a2e; font-weight: bold;">
@@ -65,22 +72,22 @@
     </div>
 
 
-    <div class="cards-grid">
+    <div class="cards-grid two-picture-mode">
 
       <div class="card image-card" id="card-a" data-label="1a">
-        <img id="img-a" src="images/1a.jpg" class="tracked-image" />
+        <img id="img-a" src="images_v2/1a.jpg" class="tracked-image" alt="Picture 1A" />
       </div>
 
       <div class="card image-card" id="card-b" data-label="1b">
-        <img id="img-b" src="images/1b.jpg" class="tracked-image" />
+        <img id="img-b" src="images_v2/1b.jpg" class="tracked-image" alt="Picture 1B" />
       </div>
 
-      <div class="card image-card" id="card-c" data-label="1c">
-        <img id="img-c" src="images/1c.jpg" class="tracked-image" />
+      <div class="card image-card" id="card-c" data-label="1c" hidden>
+        <img id="img-c" src="images/1c.jpg" class="tracked-image" alt="Picture 1C" />
       </div>
 
-      <div class="card image-card" id="card-d" data-label="1d">
-        <img id="img-d" src="images/1d.jpg" class="tracked-image" />
+      <div class="card image-card" id="card-d" data-label="1d" hidden>
+        <img id="img-d" src="images/1d.jpg" class="tracked-image" alt="Picture 1D" />
       </div>
 
     </div>
